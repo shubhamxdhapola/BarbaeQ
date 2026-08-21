@@ -1,0 +1,28 @@
+export const UserRole = {
+  CUSTOMER: 'CUSTOMER',
+  SHOP_OWNER: 'SHOP_OWNER',
+  BARBER: 'BARBER',
+  ADMIN: 'ADMIN',
+  MANAGER: 'MANAGER'
+};
+
+export const ShopStatus = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED'
+};
+
+export const AppointmentStatus = {
+  PENDING_APPROVAL: 'PENDING_APPROVAL',
+  WAITING: 'WAITING',
+  IN_SERVICE: 'IN_SERVICE',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED',
+  NO_SHOW: 'NO_SHOW',
+  REJECTED: 'REJECTED'
+};
+
+export const AppointmentSource = {
+  ONLINE: 'ONLINE',
+  WALK_IN: 'WALK_IN'
+};
