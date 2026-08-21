@@ -1,13 +1,12 @@
 {
   "name": "barbaeq-server",
   "version": "1.0.0",
-  "description": "BarberQueue API Server",
+  "description": "barbaeq API Server",
   "type": "module",
-  "main": "src/server.js",
+  "main": "server.js",
   "scripts": {
-    "dev": "nodemon src/server.js",
-    "start": "node src/server.js",
-    "seed": "node src/scripts/seedAdmin.js"
+    "dev": "nodemon server.js",
+    "start": "node server.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
