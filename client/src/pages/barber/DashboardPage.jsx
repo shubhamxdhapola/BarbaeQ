@@ -44,7 +44,8 @@ export const DashboardPage = () => {
   });
   const [walkInOpen, setWalkInOpen] = useState(false);
 
-  const isAvailable = myProfile?.isAvailable !== false;
+  const isShopClosed = myProfile?.shopId?.isOpen === false || myProfile?.shopId?.isActive === false;
+  const isAvailable = myProfile?.isAvailable !== false && !isShopClosed;
   const isDeactivatedByShop = myProfile?.isActive === false;
 
   const loadQueue = () => {
@@ -62,6 +63,10 @@ export const DashboardPage = () => {
   const handleToggleAvailability = async () => {
     if (isDeactivatedByShop) {
       toast.error('Your barber station is deactivated by the shop owner');
+      return;
+    }
+    if (isShopClosed) {
+      toast.error('Cannot go online while the shop is closed');
       return;
     }
     try {
@@ -173,6 +178,14 @@ export const DashboardPage = () => {
       toast.error('Your barber station is deactivated by the shop owner');
       return;
     }
+    if (isShopClosed) {
+      toast.error('Cannot adjust queue buffer while the shop is closed');
+      return;
+    }
+    if (!isAvailable) {
+      toast.error('Cannot adjust queue buffer while off duty');
+      return;
+    }
     try {
       const current = myProfile?.delayMinutes || 0;
       const newDelay = addedMins === 0 ? 0 : Math.max(0, current + addedMins);
@@ -202,14 +215,16 @@ export const DashboardPage = () => {
               <span className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold shrink-0 ${
                 isDeactivatedByShop
                   ? 'bg-rose-50 text-rose-700 border border-rose-200/70'
+                  : isShopClosed
+                  ? 'bg-zinc-100 text-zinc-600 border border-zinc-200'
                   : isAvailable 
                   ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/70' 
                   : 'bg-amber-50 text-amber-700 border border-amber-200/70'
               }`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${
-                  isDeactivatedByShop ? 'bg-rose-500' : isAvailable ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+                  isDeactivatedByShop ? 'bg-rose-500' : isShopClosed ? 'bg-zinc-400' : isAvailable ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
                 }`} />
-                {isDeactivatedByShop ? 'Station Deactivated' : isAvailable ? 'Station Active' : 'On Break'}
+                {isDeactivatedByShop ? 'Station Deactivated' : isShopClosed ? 'Off Duty (Shop Closed)' : isAvailable ? 'Station Active' : 'On Break'}
               </span>
             </div>
             <p className="text-zinc-500 text-xs sm:text-sm font-medium mt-0.5">Your Queue, Simplified. Manage live customer line, approval requests & active cuts.</p>
@@ -220,16 +235,21 @@ export const DashboardPage = () => {
           {/* Availability Toggle */}
           <button
             onClick={handleToggleAvailability}
-            disabled={isDeactivatedByShop}
+            disabled={isDeactivatedByShop || isShopClosed}
             className={`flex-1 lg:flex-initial px-3.5 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 border transition-all shadow-2xs ${
-              isDeactivatedByShop
+              isDeactivatedByShop || isShopClosed
                 ? 'bg-zinc-100 text-zinc-400 border-zinc-200 cursor-not-allowed opacity-60'
                 : isAvailable
                 ? 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50 hover:text-zinc-900 cursor-pointer'
                 : 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 cursor-pointer'
             }`}
           >
-            {isAvailable ? (
+            {isShopClosed ? (
+              <>
+                <Coffee className="w-4 h-4 text-zinc-400" />
+                <span>Shop Closed</span>
+              </>
+            ) : isAvailable ? (
               <>
                 <Coffee className="w-4 h-4 text-amber-600" />
                 <span>Take a Break</span>
@@ -245,9 +265,9 @@ export const DashboardPage = () => {
           {/* Quick Add Walk-in Button */}
           <button
             onClick={() => setWalkInOpen(true)}
-            disabled={isDeactivatedByShop}
+            disabled={isDeactivatedByShop || isShopClosed}
             className={`flex-1 lg:flex-initial px-3.5 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-2xs transition-colors ${
-              isDeactivatedByShop
+              isDeactivatedByShop || isShopClosed
                 ? 'bg-zinc-200 text-zinc-400 cursor-not-allowed opacity-60'
                 : 'bg-zinc-900 hover:bg-zinc-800 text-white cursor-pointer'
             }`}
@@ -634,19 +654,34 @@ export const DashboardPage = () => {
             <div className="grid grid-cols-3 gap-2">
               <button
                 onClick={() => handleAdjustDelay(5)}
-                className="py-2 px-1 rounded-xl bg-zinc-50 hover:bg-zinc-100 border border-zinc-200/80 text-xs font-bold text-zinc-800 transition-colors shadow-2xs cursor-pointer text-center"
+                disabled={isDeactivatedByShop || isShopClosed || !isAvailable}
+                className={`py-2 px-1 rounded-xl border text-xs font-bold transition-colors shadow-2xs text-center ${
+                  isDeactivatedByShop || isShopClosed || !isAvailable
+                    ? 'bg-zinc-100 text-zinc-400 border-zinc-200 cursor-not-allowed opacity-60'
+                    : 'bg-zinc-50 hover:bg-zinc-100 border-zinc-200/80 text-zinc-800 cursor-pointer'
+                }`}
               >
                 +5 min
               </button>
               <button
                 onClick={() => handleAdjustDelay(10)}
-                className="py-2 px-1 rounded-xl bg-zinc-50 hover:bg-zinc-100 border border-zinc-200/80 text-xs font-bold text-zinc-800 transition-colors shadow-2xs cursor-pointer text-center"
+                disabled={isDeactivatedByShop || isShopClosed || !isAvailable}
+                className={`py-2 px-1 rounded-xl border text-xs font-bold transition-colors shadow-2xs text-center ${
+                  isDeactivatedByShop || isShopClosed || !isAvailable
+                    ? 'bg-zinc-100 text-zinc-400 border-zinc-200 cursor-not-allowed opacity-60'
+                    : 'bg-zinc-50 hover:bg-zinc-100 border-zinc-200/80 text-zinc-800 cursor-pointer'
+                }`}
               >
                 +10 min
               </button>
               <button
                 onClick={() => handleAdjustDelay(15)}
-                className="py-2 px-1 rounded-xl bg-zinc-50 hover:bg-zinc-100 border border-zinc-200/80 text-xs font-bold text-zinc-800 transition-colors shadow-2xs cursor-pointer text-center"
+                disabled={isDeactivatedByShop || isShopClosed || !isAvailable}
+                className={`py-2 px-1 rounded-xl border text-xs font-bold transition-colors shadow-2xs text-center ${
+                  isDeactivatedByShop || isShopClosed || !isAvailable
+                    ? 'bg-zinc-100 text-zinc-400 border-zinc-200 cursor-not-allowed opacity-60'
+                    : 'bg-zinc-50 hover:bg-zinc-100 border-zinc-200/80 text-zinc-800 cursor-pointer'
+                }`}
               >
                 +15 min
               </button>
@@ -655,7 +690,12 @@ export const DashboardPage = () => {
             {delayMinutes > 0 && (
               <button
                 onClick={() => handleAdjustDelay(0)}
-                className="w-full py-2 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200/80 text-xs font-bold text-rose-700 transition-colors cursor-pointer text-center flex items-center justify-center gap-1.5 shadow-2xs"
+                disabled={isDeactivatedByShop || isShopClosed || !isAvailable}
+                className={`w-full py-2 rounded-xl border text-xs font-bold transition-colors text-center flex items-center justify-center gap-1.5 shadow-2xs ${
+                  isDeactivatedByShop || isShopClosed || !isAvailable
+                    ? 'bg-zinc-100 text-zinc-400 border-zinc-200 cursor-not-allowed opacity-60'
+                    : 'bg-rose-50 hover:bg-rose-100 border-rose-200/80 text-rose-700 cursor-pointer'
+                }`}
               >
                 <X className="w-3.5 h-3.5" />
                 <span>Reset Delay (0 min)</span>

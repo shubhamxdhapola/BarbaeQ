@@ -161,6 +161,11 @@ export const getShopBarbers = async (shopId, options = {}) => {
     };
   }
 
+  // If the shop is closed, ensure all barbers of this shop are updated to off duty
+  if (shop.isOpen === false) {
+    await Barber.updateMany({ shopId: shop._id }, { $set: { isAvailable: false } });
+  }
+
   const query = { shopId, isDeleted: false };
   if (options.activeOnly) {
     query.isActive = true;
@@ -370,7 +375,7 @@ export const deleteBarber = async (barberId, ownerId) => {
 };
 
 export const toggleAvailability = async (userId, isAvailable) => {
-  const barber = await Barber.findOne({ userId, isDeleted: { $ne: true } });
+  const barber = await Barber.findOne({ userId, isDeleted: { $ne: true } }).populate('shopId');
   if (!barber) {
     const error = new Error('Barber profile not found');
     error.statusCode = 404;
@@ -383,7 +388,22 @@ export const toggleAvailability = async (userId, isAvailable) => {
     throw error;
   }
 
-  barber.isAvailable = isAvailable !== undefined ? isAvailable : !barber.isAvailable;
+  const requestedAvailable = isAvailable !== undefined ? isAvailable : !barber.isAvailable;
+
+  // Prevent going online if the shop is currently closed or inactive
+  if (requestedAvailable) {
+    const shop = typeof barber.shopId === 'object' && barber.shopId?._id 
+      ? barber.shopId 
+      : await Shop.findById(barber.shopId);
+
+    if (shop && (shop.isOpen === false || shop.isActive === false)) {
+      const error = new Error('Cannot go on duty because the shop is currently closed');
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+
+  barber.isAvailable = requestedAvailable;
   await barber.save();
   return barber;
 };
@@ -391,7 +411,14 @@ export const toggleAvailability = async (userId, isAvailable) => {
 export const getMyBarberProfile = async (userId) => {
   const barber = await Barber.findOne({ userId, isDeleted: { $ne: true } })
     .populate('userId', 'name email phone')
-    .populate('shopId', 'name address city');
+    .populate('shopId', 'name address city isOpen isActive');
+
+  // If the shop is closed, ensure barber is marked off-duty
+  if (barber && barber.shopId && barber.shopId.isOpen === false && barber.isAvailable) {
+    barber.isAvailable = false;
+    await barber.save();
+  }
+
   return barber;
 };
 

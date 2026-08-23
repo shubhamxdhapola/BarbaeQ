@@ -138,6 +138,7 @@ export const DashboardPage = () => {
     try {
       await dispatch(updateShop({ id: shop._id, data: { isOpen: !shop.isOpen } })).unwrap();
       toast.success(`Shop is now ${!shop.isOpen ? 'Open' : 'Closed'}`);
+      dispatch(fetchShopBarbers(shop._id));
     } catch (err) {
       toast.error(err || 'Update failed');
     }

@@ -27,6 +27,10 @@ export const QueuePage = () => {
   });
   const [walkInOpen, setWalkInOpen] = useState(false);
 
+  const isShopClosed = myProfile?.shopId?.isOpen === false || myProfile?.shopId?.isActive === false;
+  const isDeactivatedByShop = myProfile?.isActive === false;
+  const isOffDuty = myProfile?.isAvailable === false || isShopClosed;
+
   const fetchQueue = useCallback(() => {
     dispatch(fetchBarberQueue());
   }, [dispatch]);
@@ -39,6 +43,18 @@ export const QueuePage = () => {
   }, [fetchQueue, dispatch]);
 
   const handleAdjustDelay = async (addedMins) => {
+    if (isDeactivatedByShop) {
+      toast.error('Your barber station is deactivated by the shop owner');
+      return;
+    }
+    if (isShopClosed) {
+      toast.error('Cannot adjust buffer while the shop is closed');
+      return;
+    }
+    if (isOffDuty) {
+      toast.error('Cannot adjust buffer while off duty');
+      return;
+    }
     try {
       const current = myProfile?.delayMinutes || 0;
       const newDelay = addedMins === 0 ? 0 : Math.max(0, current + addedMins);
@@ -158,28 +174,47 @@ export const QueuePage = () => {
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full xl:w-auto">
           {/* Quick Delay Adjustment Pills */}
-          <div className="flex items-center justify-between sm:justify-start gap-1 bg-zinc-50/80 p-1 sm:p-1.5 rounded-2xl border border-zinc-200/80">
+          <div className={`flex items-center justify-between sm:justify-start gap-1 p-1 sm:p-1.5 rounded-2xl border transition-colors ${
+            isShopClosed || isDeactivatedByShop || isOffDuty 
+              ? 'bg-zinc-100/70 border-zinc-200 opacity-60' 
+              : 'bg-zinc-50/80 border-zinc-200/80'
+          }`}>
             <span className="text-[10px] sm:text-[11px] font-bold text-zinc-500 uppercase tracking-wider pl-1 flex items-center gap-1">
               <Clock className="w-3 h-3 text-zinc-400" /> Buffer:
             </span>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => handleAdjustDelay(5)}
-                className="px-2.5 py-1 rounded-xl text-xs font-bold text-zinc-700 hover:text-zinc-900 hover:bg-zinc-200/70 transition-colors cursor-pointer"
+                disabled={isShopClosed || isDeactivatedByShop || isOffDuty}
+                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-colors ${
+                  isShopClosed || isDeactivatedByShop || isOffDuty
+                    ? 'text-zinc-400 cursor-not-allowed'
+                    : 'text-zinc-700 hover:text-zinc-900 hover:bg-zinc-200/70 cursor-pointer'
+                }`}
                 title="Add 5 min delay"
               >
                 +5m
               </button>
               <button
                 onClick={() => handleAdjustDelay(10)}
-                className="px-2.5 py-1 rounded-xl text-xs font-bold text-zinc-700 hover:text-zinc-900 hover:bg-zinc-200/70 transition-colors cursor-pointer"
+                disabled={isShopClosed || isDeactivatedByShop || isOffDuty}
+                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-colors ${
+                  isShopClosed || isDeactivatedByShop || isOffDuty
+                    ? 'text-zinc-400 cursor-not-allowed'
+                    : 'text-zinc-700 hover:text-zinc-900 hover:bg-zinc-200/70 cursor-pointer'
+                }`}
                 title="Add 10 min delay"
               >
                 +10m
               </button>
               <button
                 onClick={() => handleAdjustDelay(15)}
-                className="px-2.5 py-1 rounded-xl text-xs font-bold text-zinc-700 hover:text-zinc-900 hover:bg-zinc-200/70 transition-colors cursor-pointer"
+                disabled={isShopClosed || isDeactivatedByShop || isOffDuty}
+                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-colors ${
+                  isShopClosed || isDeactivatedByShop || isOffDuty
+                    ? 'text-zinc-400 cursor-not-allowed'
+                    : 'text-zinc-700 hover:text-zinc-900 hover:bg-zinc-200/70 cursor-pointer'
+                }`}
                 title="Add 15 min delay"
               >
                 +15m
@@ -187,7 +222,12 @@ export const QueuePage = () => {
               {delayMinutes > 0 && (
                 <button
                   onClick={() => handleAdjustDelay(0)}
-                  className="px-2.5 py-1 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer"
+                  disabled={isShopClosed || isDeactivatedByShop || isOffDuty}
+                  className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-colors ${
+                    isShopClosed || isDeactivatedByShop || isOffDuty
+                      ? 'text-zinc-400 bg-zinc-100 cursor-not-allowed'
+                      : 'text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 cursor-pointer'
+                  }`}
                   title="Reset delay to 0"
                 >
                   Reset
@@ -197,8 +237,23 @@ export const QueuePage = () => {
           </div>
 
           <button 
-            onClick={() => setWalkInOpen(true)}
-            className="w-full sm:w-auto bg-zinc-900 hover:bg-zinc-800 text-white px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-2xs transition-colors cursor-pointer"
+            onClick={() => {
+              if (isShopClosed) {
+                toast.error('Cannot add walk-in while the shop is closed');
+                return;
+              }
+              if (isOffDuty) {
+                toast.error('Cannot add walk-in while off duty');
+                return;
+              }
+              setWalkInOpen(true);
+            }}
+            disabled={isShopClosed || isDeactivatedByShop || isOffDuty}
+            className={`w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-2xs transition-colors ${
+              isShopClosed || isDeactivatedByShop || isOffDuty
+                ? 'bg-zinc-200 text-zinc-400 cursor-not-allowed opacity-60'
+                : 'bg-zinc-900 hover:bg-zinc-800 text-white cursor-pointer'
+            }`}
           >
             <UserPlus className="w-4 h-4" />
             <span>Add Walk-in</span>

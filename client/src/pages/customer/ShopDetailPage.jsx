@@ -404,7 +404,7 @@ export const ShopDetailPage = () => {
                     {barbers.length > 0 ? barbers.map(barber => {
                       const name = typeof barber.userId === 'object' && barber.userId ? barber.userId.name : 'Barber';
                       const avatar = typeof barber.userId === 'object' && barber.userId ? barber.userId.avatar : '';
-                      const isAvailable = barber.isAvailable !== false && barber.isActive !== false;
+                      const isAvailable = shop.isOpen !== false && barber.isAvailable !== false && barber.isActive !== false;
                       return (
                         <div key={barber._id} className="flex flex-col items-center bg-zinc-50 p-3 rounded-xl border border-zinc-100 text-center">
                           <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-sm font-bold mb-1.5 overflow-hidden border border-zinc-200/80 ${

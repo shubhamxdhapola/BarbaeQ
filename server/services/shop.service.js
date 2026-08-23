@@ -1,4 +1,5 @@
 import { Shop } from '../models/Shop.js';
+import { Barber } from '../models/Barber.js';
 import { ShopStatus } from '../utils/constants.js';
 import mongoose from 'mongoose';
 
@@ -170,6 +171,14 @@ export const updateShop = async (shopId, ownerId, data) => {
 
   Object.assign(shop, data);
   await shop.save();
+
+  // If the shop is marked closed (isOpen === false) or deactivated, mark all barbers of this shop as off duty
+  if (shop.isOpen === false || shop.isActive === false) {
+    await Barber.updateMany(
+      { shopId: shop._id },
+      { $set: { isAvailable: false } }
+    );
+  }
 
   return shop;
 };

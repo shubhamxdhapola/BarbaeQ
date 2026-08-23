@@ -109,8 +109,8 @@ export const toggleShopActive = async (shopId) => {
   const barbers = await Barber.find({ shopId: shop._id });
 
   if (nextIsActive === false) {
-    // 1. Deactivate all barber records at this shop
-    await Barber.updateMany({ shopId: shop._id }, { isActive: false });
+    // 1. Deactivate and mark off-duty all barber records at this shop
+    await Barber.updateMany({ shopId: shop._id }, { isActive: false, isAvailable: false });
 
     // 2. For each barber, check if they have active assignments at other active shops
     for (const b of barbers) {

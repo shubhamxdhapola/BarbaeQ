@@ -252,7 +252,7 @@ export const BookingPage = () => {
                     const name = getBarberName(barber);
                     const isSelected = selectedBarber?._id === barber._id;
                     const qInfo = shopQueueInfo.find(q => q.barberId === barber._id);
-                    const isAvailable = barber.isAvailable !== false && barber.isActive !== false;
+                    const isAvailable = shop?.isOpen !== false && barber.isAvailable !== false && barber.isActive !== false;
 
                     return (
                       <div
