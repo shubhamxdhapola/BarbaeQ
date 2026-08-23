@@ -33,23 +33,38 @@ export const addBarber = async (shopId, ownerId, data) => {
     throw error;
   }
 
-  const shopBarbers = await Barber.find({ shopId, isDeleted: false }).populate('userId');
-  const duplicateBarber = shopBarbers.find((b) => 
-    b.userId && (b.userId.email === cleanEmail || b.userId.phone === cleanPhone)
-  );
-
-  if (duplicateBarber) {
-    const field = duplicateBarber.userId.email === cleanEmail ? 'email' : 'phone number';
-    const error = new Error(`A barber with this ${field} already exists in your shop`);
+  if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+    const error = new Error('Please enter a valid email address');
     error.statusCode = 400;
     throw error;
   }
 
-  // Look for existing user by normalized phone or email
-  let user = await User.findOne({
-    $or: [{ phone: cleanPhone }, { email: cleanEmail }]
-  });
+  // 1. Check duplicate phone or duplicate email in this shop
+  const shopBarbers = await Barber.find({ shopId, isDeleted: false }).populate('userId');
+  const duplicateBarber = shopBarbers.find((b) => 
+    b.userId && (b.userId.email?.toLowerCase() === cleanEmail || b.userId.phone === cleanPhone)
+  );
 
+  if (duplicateBarber) {
+    const field = duplicateBarber.userId.email?.toLowerCase() === cleanEmail ? 'email address' : 'phone number';
+    const error = new Error(`A barber with this ${field} already exists in your shop (${duplicateBarber.userId.name})`);
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // 2. Check existing user accounts by phone and email
+  const userByPhone = await User.findOne({ phone: cleanPhone });
+  const userByEmail = await User.findOne({ email: cleanEmail });
+
+  if (userByPhone && userByEmail && userByPhone._id.toString() !== userByEmail._id.toString()) {
+    const error = new Error(
+      `Mismatch: Mobile number belongs to "${userByPhone.name}" (${userByPhone.email}) while email belongs to "${userByEmail.name}". Please provide matching credentials for the user.`
+    );
+    error.statusCode = 409;
+    throw error;
+  }
+
+  let user = userByPhone || userByEmail;
   let barber;
 
   if (user) {
@@ -62,7 +77,7 @@ export const addBarber = async (shopId, ownerId, data) => {
         error.statusCode = 400;
         throw error;
       } else {
-        const error = new Error(`This user is already registered as an active barber at "${existingShopName}". A barber can only be assigned to one shop at a time.`);
+        const error = new Error(`This user (${user.name}) is already registered as an active barber at "${existingShopName}". A barber can only be assigned to one shop at a time.`);
         error.statusCode = 409;
         throw error;
       }
@@ -91,10 +106,20 @@ export const addBarber = async (shopId, ownerId, data) => {
       barber = previouslyDeleted;
     }
   } else {
-    // If creating a brand new user, ensure email is unique
-    const emailExists = await User.findOne({ email: cleanEmail });
+    // If creating a brand new user, ensure email and phone are completely unique
+    const [emailExists, phoneExists] = await Promise.all([
+      User.findOne({ email: cleanEmail }),
+      User.findOne({ phone: cleanPhone })
+    ]);
+
     if (emailExists) {
       const error = new Error('An account with this email address already exists');
+      error.statusCode = 409;
+      throw error;
+    }
+
+    if (phoneExists) {
+      const error = new Error('An account with this phone number already exists');
       error.statusCode = 409;
       throw error;
     }
@@ -449,19 +474,28 @@ export const lookupUser = async (phone, email) => {
     return { exists: false };
   }
 
-  const query = [];
-  if (cleanPhone && /^[6-9]\d{9}$/.test(cleanPhone)) {
-    query.push({ phone: cleanPhone });
-  }
-  if (cleanEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
-    query.push({ email: cleanEmail });
-  }
+  const isValidPhone = cleanPhone && /^[6-9]\d{9}$/.test(cleanPhone);
+  const isValidEmail = cleanEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail);
 
-  if (query.length === 0) {
+  if (!isValidPhone && !isValidEmail) {
     return { exists: false };
   }
 
-  const user = await User.findOne({ $or: query }).select('name email phone roles');
+  const userByPhone = isValidPhone ? await User.findOne({ phone: cleanPhone }).select('name email phone roles') : null;
+  const userByEmail = isValidEmail ? await User.findOne({ email: cleanEmail }).select('name email phone roles') : null;
+
+  if (userByPhone && userByEmail && userByPhone._id.toString() !== userByEmail._id.toString()) {
+    return {
+      exists: true,
+      conflict: true,
+      conflictMessage: `The mobile number belongs to "${userByPhone.name}" (${userByPhone.email}) and the email belongs to "${userByEmail.name}".`,
+      name: userByPhone.name,
+      email: userByPhone.email,
+      phone: userByPhone.phone,
+    };
+  }
+
+  const user = userByPhone || userByEmail;
   if (!user) {
     return { exists: false };
   }
@@ -471,12 +505,14 @@ export const lookupUser = async (phone, email) => {
 
   return {
     exists: true,
+    conflict: false,
     name: user.name,
     email: user.email,
     phone: user.phone,
     hasBarberRole: user.hasRole ? user.hasRole(UserRole.BARBER) : false,
     isAssignedToOtherShop: !!(activeBarber && activeBarber.shopId),
     assignedShopName: activeBarber?.shopId?.name || null,
-    assignedShopId: activeBarber?.shopId?._id || null
+    assignedShopId: activeBarber?.shopId?._id || null,
+    matchedBy: userByPhone ? 'phone' : 'email'
   };
 };

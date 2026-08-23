@@ -150,8 +150,11 @@ export const fetchBarberAppointments = createAsyncThunk(
 
 export const fetchShopAppointments = createAsyncThunk(
   'appointment/fetchShopAppointments',
-  async ({ shopId, range = 'today' }, { rejectWithValue }) => {
+  async (args, { rejectWithValue }) => {
     try {
+      const shopId = typeof args === 'string' ? args : args?.shopId;
+      const range = (typeof args === 'object' && args?.range) || 'today';
+      if (!shopId) return [];
       const response = await axiosInstance.get(API_PATHS.APPOINTMENT.SHOP_APPOINTMENTS(shopId), {
         params: { range }
       });

@@ -450,7 +450,12 @@ export const getBarberAppointmentHistory = async (barberUserId, range = 'today')
 };
 
 export const getShopAppointments = async (shopId, ownerId, options = {}) => {
-  const shop = await Shop.findOne({ _id: new Types.ObjectId(shopId), ownerId: new Types.ObjectId(ownerId) });
+  const shopIdStr = shopId?.toString();
+  const ownerIdStr = ownerId?.toString();
+  if (!shopIdStr || !Types.ObjectId.isValid(shopIdStr) || !ownerIdStr || !Types.ObjectId.isValid(ownerIdStr)) {
+    throw createError('Invalid shop or owner ID', 400);
+  }
+  const shop = await Shop.findOne({ _id: new Types.ObjectId(shopIdStr), ownerId: new Types.ObjectId(ownerIdStr) });
   if (!shop) throw createError('Shop not found or you are not the owner', 404);
 
   const range = typeof options === 'string' ? options : (options.range || 'today');

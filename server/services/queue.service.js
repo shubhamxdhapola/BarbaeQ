@@ -135,6 +135,8 @@ export const getShopQueueInfo = async (shopId) => {
       barberId: barber._id.toString(),
       barberName: barber.userId?.name || 'Barber',
       barberAvatar: barber.userId?.avatar || '',
+      isAvailable: barber.isAvailable !== false,
+      isActive: barber.isActive !== false,
       queueLength: info.queueLength,
       estimatedWait: info.estimatedWait
     });
