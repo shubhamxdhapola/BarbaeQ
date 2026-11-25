@@ -1,0 +1,89 @@
+services:
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+
+    container_name: barbaeq-client
+
+    env_file:
+    - .env
+
+    ports:
+      - "5173:5173"
+
+    volumes:
+      - ./client:/app
+      - client_node_modules:/app/node_modules
+
+    environment:
+      - VITE_API_URL=${VITE_API_URL}
+
+    depends_on:
+      - server
+
+    restart: unless-stopped
+
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+
+    container_name: barbaeq-server
+
+    env_file:
+    - .env
+
+    ports:
+      - "5000:5000"
+
+    volumes:
+      - ./server:/app
+      - server_node_modules:/app/node_modules
+
+    environment:
+      - PORT=${PORT}
+      - NODE_ENV=${NODE_ENV}
+      - MONGODB_URI=${MONGODB_URI}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRE=${JWT_EXPIRE}
+      - CLIENT_URL=${CLIENT_URL}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:8
+
+    container_name: barbaeq-mongo
+
+    volumes:
+      - mongodb_data:/data/db
+
+    healthcheck:
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - "db.adminCommand('ping').ok"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+    restart: unless-stopped
+
+
+volumes:
+  mongodb_data:
+  client_node_modules:
+  server_node_modules:
